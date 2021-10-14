@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"example/interfaces"
+	"example/messaging"
 	"example/models"
 	"net/http"
 
@@ -46,6 +47,22 @@ func (p *Person) CreatePerson() func(*gin.Context) {
 				c.Abort()
 				return
 			}
+
+			message := messaging.Message{}
+			message.Subject = "person.create"
+			buf, err := person.ToBytes()
+			// This error will not delete the record from the db.This has to be handled at a later stage
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"status":  "failure",
+					"message": err.Error(),
+				})
+				c.Abort()
+				return
+			}
+			message.Data = buf
+			messaging.ChMessage <- message
+
 			c.JSON(http.StatusOK, gin.H{
 				"status":  "success",
 				"message": result,

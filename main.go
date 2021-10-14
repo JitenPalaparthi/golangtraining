@@ -167,6 +167,46 @@ import (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -242,17 +282,19 @@ func main() {
 package main
 
 import (
-	"flag"
-	"os"
-
 	"example/database"
+	"example/handlers"
+	"example/messaging"
+	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	"os"
 )
 
 var (
-	DBConnection = "root:admin@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True&loc=Local"
-	DBName       = "demo"
+	DBConnection       = "root:admin@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True&loc=Local"
+	DBName             = "demo"
+	MessaginConnection = "nats://127.0.0.1:4222"
 )
 
 func main() {
@@ -265,14 +307,27 @@ func main() {
 	if os.Getenv("DB_NAME") != "" {
 		DBName = os.Getenv("DB_NAME")
 	}
+
+	if os.Getenv("MESSAGE_CONNECTION") != "" {
+		MessaginConnection = os.Getenv("MESSAGE_CONNECTION")
+	}
 	glog.Infoln("Application has been started using port:", *portPtr)
 
-	_, err := database.GetConnection(DBConnection, DBName)
+	session, err := database.GetConnection(DBConnection, DBName)
 	if err != nil {
 		glog.Fatalln("Database Error:", err)
 	} else {
 		glog.Infoln("Successfully connected to the database")
 	}
+
+	MessageConn, err := messaging.GetConnection(MessaginConnection)
+	if err != nil {
+		glog.Fatalln("Messaging connection Error:", err)
+	} else {
+		glog.Infoln("Successfully connected to the Messaging platform")
+	}
+
+	messaging.Init(MessageConn)
 
 	glog.Flush()
 
@@ -285,6 +340,21 @@ func main() {
 			"message": "pong",
 		})
 	})
-	router.Run(":" + *portPtr)
 
+	phandler := &handlers.Person{Interface: &database.PersonDB{DB: session}}
+
+	//phandler := &handlers.Person{Interface: &filedb.PersonFileDB{}}
+
+	router.POST("/person", phandler.CreatePerson())
+	//time.AfterFunc(time.Second*5, F)
+
+	router.Run(":" + *portPtr)
 }
+
+//curl -d '{"name":"jiten", "email":"jitenp@outlook.com","address":"Bangalore"}' -H "Content-Type: application/json" -X POST http://localhost:56060/person
+
+//curl -d "name=jiten1&=value2" -X POST http://localhost:3000/data
+
+// func F() {
+// 	fmt.Println("Yes its done,,now")
+// }

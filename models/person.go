@@ -1,6 +1,8 @@
 package models
 
 import (
+	"bytes"
+	"encoding/gob"
 	"example/models/common"
 )
 
@@ -19,6 +21,18 @@ func (p *Person) ValidatePerson() (err error) {
 		return ErrInvalidEmail
 	}
 	return nil
+}
+
+func (p *Person) ToBytes() ([]byte, error) {
+	buf := bytes.Buffer{}
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(p)
+	if err != nil {
+		//log.Fatal(err)
+		return nil, err
+	}
+	//	fmt.Println("uncompressed size (bytes): ", len(buf.Bytes()))
+	return buf.Bytes(), nil
 }
 
 // gob struct to []byte or string
